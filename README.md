@@ -7,8 +7,8 @@ Complete Discord server nuke bot that destroys and rebuilds a server with one co
 ✅ **Kick all members** - Removes everyone from the server  
 ✅ **Delete all channels** - Removes all text and voice channels  
 ✅ **Delete all roles** - Removes all custom roles  
-✅ **Create 999+ channels** - Creates गोप गोप named channels  
-✅ **Spam messages** - Sends spam message 10 times in each channel  
+✅ **Create 9999+ channels** - Creates गोप गोप named channels  
+✅ **Spam messages** - Sends spam message 999 times in each channel  
 ✅ **Change server name** - Renames server to "NUKE BY ROHIT"  
 
 ## Setup Instructions
